@@ -45,9 +45,23 @@ def _sentiment(text: str) -> str:
 # ── Scraping helpers ─────────────────────────────────────────────────────────
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ScraperApp/1.0)"}
 
-def _scrape_quotes(url: str) -> list[dict]:
-    resp = requests.get(url, headers=HEADERS, timeout=10)
+
+def _fetch_page(url: str) -> requests.Response:
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=12, allow_redirects=True)
+    except requests.exceptions.RequestException as exc:
+        raise requests.exceptions.RequestException(f"Could not reach {url}: {exc}") from exc
+
+    if resp.status_code == 403:
+        raise PermissionError(
+            f"This site blocks automated scraping (HTTP 403). Try a public page that allows bots, like https://quotes.toscrape.com."
+        )
     resp.raise_for_status()
+    return resp
+
+
+def _scrape_quotes(url: str) -> list[dict]:
+    resp = _fetch_page(url)
     soup = BeautifulSoup(resp.text, "html.parser")
     records = []
     for q in soup.select("div.quote"):
@@ -68,8 +82,7 @@ def _scrape_quotes(url: str) -> list[dict]:
 
 def _scrape_generic(url: str) -> list[dict]:
     """Fallback: grab all paragraph text from any page."""
-    resp = requests.get(url, headers=HEADERS, timeout=10)
-    resp.raise_for_status()
+    resp = _fetch_page(url)
     soup = BeautifulSoup(resp.text, "html.parser")
     records = []
     for p in soup.select("p"):

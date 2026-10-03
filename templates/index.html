@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DataPull — Web Scraper & Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+<!-- ── Ambient background particles ── -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- ── Shell ── -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-mark">D</span>
+      <span class="logo-text">DataPull</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-panel="scraper">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 8v4l3 3"/></svg>
+        Scraper
+      </button>
+      <button class="nav-item" data-panel="charts">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Charts
+      </button>
+      <button class="nav-item" data-panel="table">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+        Data Table
+      </button>
+      <button class="nav-item" data-panel="history">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ── PANEL: Scraper ── -->
+    <section class="panel active" id="panel-scraper">
+      <div class="panel-header">
+        <h1>Web Scraper</h1>
+        <p>Extract structured data from any URL using BeautifulSoup</p>
+      </div>
+
+      <div class="url-form">
+        <div class="url-input-wrap">
+          <svg class="url-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <input type="url" id="urlInput" placeholder="https://quotes.toscrape.com" value="https://quotes.toscrape.com" autocomplete="off" />
+        </div>
+        <button class="btn-run" id="runBtn" onclick="runScrape()">
+          <span class="btn-text">Scrape</span>
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <!-- Quick URLs -->
+      <div class="quick-urls">
+        <span class="quick-label">Try:</span>
+        <button class="quick-chip" onclick="setUrl('https://quotes.toscrape.com')">quotes.toscrape.com</button>
+        <button class="quick-chip" onclick="setUrl('https://quotes.toscrape.com/page/2/')">page 2</button>
+        <button class="quick-chip" onclick="setUrl('https://quotes.toscrape.com/tag/life/')">tag: life</button>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap" style="display:none">
+        <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-log" id="progressLog"></div>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="metrics" id="metrics" style="opacity:0">
+        <div class="metric-card">
+          <div class="metric-label">Records</div>
+          <div class="metric-value" id="mRecords">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg length</div>
+          <div class="metric-value" id="mAvgLen">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Positive</div>
+          <div class="metric-value accent-green" id="mPos">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Negative</div>
+          <div class="metric-value accent-red" id="mNeg">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Run time</div>
+          <div class="metric-value" id="mTime">—</div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="export-row" id="exportRow" style="display:none">
+        <span class="export-label">Export:</span>
+        <button class="btn-export" onclick="exportData('csv')">CSV</button>
+        <button class="btn-export" onclick="exportData('json')">JSON</button>
+      </div>
+    </section>
+
+    <!-- ── PANEL: Charts ── -->
+    <section class="panel" id="panel-charts">
+      <div class="panel-header">
+        <h1>Visualizations</h1>
+        <p>Matplotlib-style charts rendered live from scraped data</p>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-card-title">Sentiment distribution</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="sentChart" role="img" aria-label="Doughnut chart of sentiment"></canvas></div>
+        </div>
+        <div class="chart-card wide">
+          <div class="chart-card-title">Top authors</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="authorChart" role="img" aria-label="Bar chart of top authors"></canvas></div>
+        </div>
+        <div class="chart-card full">
+          <div class="chart-card-title">Text length distribution</div>
+          <div class="chart-wrap" style="height:180px"><canvas id="lenChart" role="img" aria-label="Histogram of text lengths"></canvas></div>
+        </div>
+      </div>
+      <div class="charts-empty" id="chartsEmpty">Run the scraper first to generate charts.</div>
+    </section>
+
+    <!-- ── PANEL: Table ── -->
+    <section class="panel" id="panel-table">
+      <div class="panel-header">
+        <h1>Data Table</h1>
+        <p>Browse, filter, and inspect every scraped record</p>
+      </div>
+      <div class="table-toolbar">
+        <input type="search" id="tableSearch" placeholder="Filter records…" oninput="filterTable()" />
+        <span class="table-count" id="tableCount">0 records</span>
+      </div>
+      <div class="table-scroll">
+        <table id="dataTable">
+          <thead><tr><th>#</th><th>Text</th><th>Author</th><th>Tags</th><th>Sentiment</th><th>Length</th></tr></thead>
+          <tbody id="tableBody">
+            <tr><td colspan="6" class="table-empty">No data yet — run the scraper.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── PANEL: History ── -->
+    <section class="panel" id="panel-history">
+      <div class="panel-header">
+        <h1>Scrape History</h1>
+        <p>Past sessions from this server run</p>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">No history yet.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
